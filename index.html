@@ -1,0 +1,559 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="chrome=1">
+    <title>puppet-graphite by echocat</title>
+
+    <link rel="stylesheet" href="stylesheets/styles.css">
+    <link rel="stylesheet" href="stylesheets/pygment_trac.css">
+    <meta name="viewport" content="width=device-width, initial-scale=1, user-scalable=no">
+    <!--[if lt IE 9]>
+    <script src="//html5shiv.googlecode.com/svn/trunk/html5.js"></script>
+    <![endif]-->
+  </head>
+  <body>
+    <div class="wrapper">
+      <header>
+        <h1>puppet-graphite</h1>
+        <p>puppet module for graphite monitoring tools</p>
+
+        <p class="view"><a href="https://github.com/echocat/puppet-graphite">View the Project on GitHub <small>echocat/puppet-graphite</small></a></p>
+
+
+        <ul>
+          <li><a href="https://github.com/echocat/puppet-graphite/zipball/master">Download <strong>ZIP File</strong></a></li>
+          <li><a href="https://github.com/echocat/puppet-graphite/tarball/master">Download <strong>TAR Ball</strong></a></li>
+          <li><a href="https://github.com/echocat/puppet-graphite">View On <strong>GitHub</strong></a></li>
+        </ul>
+      </header>
+      <section>
+        <h1>
+<a name="graphite" class="anchor" href="#graphite"><span class="octicon octicon-link"></span></a>graphite</h1>
+
+<h4>
+<a name="table-of-contents" class="anchor" href="#table-of-contents"><span class="octicon octicon-link"></span></a>Table of Contents</h4>
+
+<ol>
+<li><a href="#overview">Overview - What is the graphite module?</a></li>
+<li><a href="#module-description">Module Description - What does this module do?</a></li>
+<li>
+<a href="#setup">Setup - The basics of getting started with graphite</a>
+
+<ul>
+<li><a href="#beginning-with-graphite">Beginning with graphite - Installation</a></li>
+<li><a href="#configure-mysql-and-memcached">Configure MySQL and Memcached</a></li>
+<li><a href="#configuration-with-apache-24-and-cors">Configuration with Apache 2.4 and CORS</a></li>
+</ul>
+</li>
+<li><a href="#usage">Usage - The class and available configurations</a></li>
+<li><a href="#requirements">Requirements</a></li>
+<li><a href="#limitations">Limitations - OS compatibility, etc.</a></li>
+<li><a href="#contributing">Contributing to the graphite module</a></li>
+</ol><h2>
+<a name="overview" class="anchor" href="#overview"><span class="octicon octicon-link"></span></a>Overview</h2>
+
+<p>This module installs and makes basic configs for graphite, with carbon and whisper.</p>
+
+<h2>
+<a name="module-description" class="anchor" href="#module-description"><span class="octicon octicon-link"></span></a>Module Description</h2>
+
+<p><a href="http://graphite.readthedocs.org/en/latest/overview.html">Graphite</a>, and its components Carbon and Whispter, is an enterprise-scale monitoring tool. This module sets up a simple graphite server with all its components. Furthermore it can be used to set up more complex graphite environments with metric aggregation, clustering and so on.</p>
+
+<h2>
+<a name="setup" class="anchor" href="#setup"><span class="octicon octicon-link"></span></a>Setup</h2>
+
+<p><strong>What graphite affects:</strong></p>
+
+<ul>
+<li>packages/services/configuration files for Graphite</li>
+<li>on default sets up webserver (can be disabled if manage by other module)</li>
+</ul><h3>
+<a name="beginning-with-graphite" class="anchor" href="#beginning-with-graphite"><span class="octicon octicon-link"></span></a>Beginning with Graphite</h3>
+
+<p>To install Graphite with default parameters</p>
+
+<div class="highlight highlight-puppet"><pre>    <span class="nc">class</span> <span class="p">{</span> <span class="s1">'graphite'</span><span class="p">:</span> <span class="p">}</span>
+</pre></div>
+
+<p>The defaults are determined by your operating system e.g. Debian systems have one set of defaults, and RedHat systems have another). This defaults should work well on testing environments with graphite as a standalone service on the machine. For production use it is recommend to use a database like MySQL and cache data in memcached (not installed with this module) and configure it here. Furthermore you should check things like <code>gr_storage_schemas</code>.</p>
+
+<h3>
+<a name="configure-mysql-and-memcached" class="anchor" href="#configure-mysql-and-memcached"><span class="octicon octicon-link"></span></a>Configure MySQL and Memcached</h3>
+
+<div class="highlight highlight-puppet"><pre>  <span class="nc">class</span> <span class="p">{</span> <span class="s1">'graphite'</span><span class="p">:</span>
+    <span class="nt">gr_max_updates_per_second</span> <span class="p">=&gt;</span> <span class="m">100</span><span class="p">,</span>
+    <span class="nt">gr_timezone</span>               <span class="p">=&gt;</span> <span class="s1">'Europe/Berlin'</span><span class="p">,</span>
+    <span class="nt">secret_key</span>                <span class="p">=&gt;</span> <span class="s1">'CHANGE_IT!'</span><span class="p">,</span>
+    <span class="nt">gr_storage_schemas</span>        <span class="p">=&gt;</span> <span class="p">[</span>
+      <span class="p">{</span>
+        <span class="ss">name</span>       <span class="p">=&gt;</span> <span class="s1">'carbon'</span><span class="p">,</span>
+        <span class="ss">pattern</span>    <span class="p">=&gt;</span> <span class="s1">'^carbon\.'</span><span class="p">,</span>
+        <span class="ss">retentions</span> <span class="p">=&gt;</span> <span class="s1">'1m:90d'</span>
+      <span class="p">},</span>
+      <span class="p">{</span>
+        <span class="ss">name</span>       <span class="p">=&gt;</span> <span class="s1">'special_server'</span><span class="p">,</span>
+        <span class="ss">pattern</span>    <span class="p">=&gt;</span> <span class="s1">'^longtermserver_'</span><span class="p">,</span>
+        <span class="ss">retentions</span> <span class="p">=&gt;</span> <span class="s1">'10s:7d,1m:365d,10m:5y'</span>
+      <span class="p">},</span>
+      <span class="p">{</span>
+        <span class="ss">name</span>       <span class="p">=&gt;</span> <span class="s1">'default'</span><span class="p">,</span>
+        <span class="ss">pattern</span>    <span class="p">=&gt;</span> <span class="s1">'.*'</span><span class="p">,</span>
+        <span class="ss">retentions</span> <span class="p">=&gt;</span> <span class="s1">'60:43200,900:350400'</span>
+      <span class="p">}</span>
+    <span class="p">],</span>
+    <span class="nt">gr_django_db_engine</span>       <span class="p">=&gt;</span> <span class="s1">'django.db.backends.mysql'</span><span class="p">,</span>
+    <span class="nt">gr_django_db_name</span>         <span class="p">=&gt;</span> <span class="s1">'graphite'</span><span class="p">,</span>
+    <span class="nt">gr_django_db_user</span>         <span class="p">=&gt;</span> <span class="s1">'graphite'</span><span class="p">,</span>
+    <span class="nt">gr_django_db_password</span>     <span class="p">=&gt;</span> <span class="s1">'MYsEcReT!'</span><span class="p">,</span>
+    <span class="nt">gr_django_db_host</span>         <span class="p">=&gt;</span> <span class="s1">'mysql.my.domain'</span><span class="p">,</span>
+    <span class="nt">gr_django_db_port</span>         <span class="p">=&gt;</span> <span class="s1">'3306'</span><span class="p">,</span>
+    <span class="nt">gr_memcache_hosts</span>         <span class="p">=&gt;</span> <span class="p">[</span><span class="s1">'127.0.0.1:11211'</span><span class="p">]</span>
+  <span class="p">}</span>
+</pre></div>
+
+<h3>
+<a name="configuration-with-apache-24-and-cors" class="anchor" href="#configuration-with-apache-24-and-cors"><span class="octicon octicon-link"></span></a>Configuration with Apache 2.4 and CORS</h3>
+
+<p>If you use a system which ships Apache 2.4, then you will need a slightly different vhost config.
+Here is an example with Apache 2.4 and <a href="http://en.wikipedia.org/wiki/Cross-origin_resource_sharing">CORS</a> enabled.
+If you do not know what CORS, then do not use it. Its disabled by default.</p>
+
+<div class="highlight highlight-puppet"><pre>  <span class="nc">class</span> <span class="p">{</span> <span class="s1">'graphite'</span><span class="p">:</span>
+    <span class="nt">gr_apache_24</span>               <span class="p">=&gt;</span> <span class="ss">true</span><span class="p">,</span>
+    <span class="nt">gr_web_cors_allow_from_all</span> <span class="p">=&gt;</span> <span class="ss">true</span><span class="p">,</span>
+    <span class="nt">secret_key</span>                 <span class="p">=&gt;</span> <span class="s1">'CHANGE_IT!'</span>
+  <span class="p">}</span>
+</pre></div>
+
+<h2>
+<a name="usage" class="anchor" href="#usage"><span class="octicon octicon-link"></span></a>Usage</h2>
+
+<h4>
+<a name="class-graphite" class="anchor" href="#class-graphite"><span class="octicon octicon-link"></span></a>Class: <code>graphite</code>
+</h4>
+
+<p>This is the primary class. And the only one which should be used.</p>
+
+<p><strong>Parameters within <code>graphite</code>:</strong></p>
+
+<h5>
+<a name="gr_user" class="anchor" href="#gr_user"><span class="octicon octicon-link"></span></a><code>gr_user</code>
+</h5>
+
+<p>Default is empty. The user who runs graphite. If this is empty carbon runs as the user that invokes it.</p>
+
+<h5>
+<a name="gr_max_cache_size" class="anchor" href="#gr_max_cache_size"><span class="octicon octicon-link"></span></a><code>gr_max_cache_size</code>
+</h5>
+
+<p>Default is 'inf'. Limits the size of the cache to avoid swapping or becoming CPU bound. Use the value "inf" (infinity) for an unlimited cache size.</p>
+
+<h5>
+<a name="gr_max_updates_per_second" class="anchor" href="#gr_max_updates_per_second"><span class="octicon octicon-link"></span></a><code>gr_max_updates_per_second</code>
+</h5>
+
+<p>Default is 500. Limits the number of whisper update_many() calls per second, which effectively means the number of write requests sent to the disk.</p>
+
+<h5>
+<a name="gr_max_creates_per_minute" class="anchor" href="#gr_max_creates_per_minute"><span class="octicon octicon-link"></span></a><code>gr_max_creates_per_minute</code>
+</h5>
+
+<p>Default is 50. Softly limits the number of whisper files that get created each minute.</p>
+
+<h5>
+<a name="gr_carbon_metric_interval" class="anchor" href="#gr_carbon_metric_interval"><span class="octicon octicon-link"></span></a><code>gr_carbon_metric_interval</code>
+</h5>
+
+<p>Default is 60. Set the interval between sending internal performance metrics; affects all carbon daemons.</p>
+
+<h5>
+<a name="gr_line_receiver_interface" class="anchor" href="#gr_line_receiver_interface"><span class="octicon octicon-link"></span></a><code>gr_line_receiver_interface</code>
+</h5>
+
+<p>Default is '0.0.0.0' (string). Interface the line receiver listens.</p>
+
+<h5>
+<a name="gr_line_receiver_port" class="anchor" href="#gr_line_receiver_port"><span class="octicon octicon-link"></span></a><code>gr_line_receiver_port</code>
+</h5>
+
+<p>Default is 2003. Port of line receiver.</p>
+
+<h5>
+<a name="gr_enable_udp_listener" class="anchor" href="#gr_enable_udp_listener"><span class="octicon octicon-link"></span></a><code>gr_enable_udp_listener</code>
+</h5>
+
+<p>Default is 'False' (string). Set this to True to enable the UDP listener.</p>
+
+<h5>
+<a name="gr_udp_receiver_interface" class="anchor" href="#gr_udp_receiver_interface"><span class="octicon octicon-link"></span></a><code>gr_udp_receiver_interface</code>
+</h5>
+
+<p>Default is '0.0.0.0' (string). Its clear, isnt it?</p>
+
+<h5>
+<a name="gr_udp_receiver_port" class="anchor" href="#gr_udp_receiver_port"><span class="octicon octicon-link"></span></a><code>gr_udp_receiver_port</code>
+</h5>
+
+<p>Default is 2003. Self explaining.</p>
+
+<h5>
+<a name="gr_pickle_receiver_interface" class="anchor" href="#gr_pickle_receiver_interface"><span class="octicon octicon-link"></span></a><code>gr_pickle_receiver_interface</code>
+</h5>
+
+<p>Default is '0.0.0.0' (string). Pickle is a special receiver who handle tuples of data.</p>
+
+<h5>
+<a name="gr_pickle_receiver_port" class="anchor" href="#gr_pickle_receiver_port"><span class="octicon octicon-link"></span></a><code>gr_pickle_receiver_port</code>
+</h5>
+
+<p>Default is 2004. Self explaining</p>
+
+<h5>
+<a name="gr_use_insecure_unpickler" class="anchor" href="#gr_use_insecure_unpickler"><span class="octicon octicon-link"></span></a><code>gr_use_insecure_unpickler</code>
+</h5>
+
+<p>Default is 'False' (string). Set this to 'True' to revert to the old-fashioned insecure unpickler.</p>
+
+<h5>
+<a name="gr_use_whitelist" class="anchor" href="#gr_use_whitelist"><span class="octicon octicon-link"></span></a><code>gr_use_whitelist</code>
+</h5>
+
+<p>Default is 'False' (string). Set this to 'True' to enable whitelists and blacklists.</p>
+
+<h5>
+<a name="gr_cache_query_interface" class="anchor" href="#gr_cache_query_interface"><span class="octicon octicon-link"></span></a><code>gr_cache_query_interface</code>
+</h5>
+
+<p>Default is '0.0.0.0'. Interface to send cache queries to.</p>
+
+<h5>
+<a name="gr_cache_query_port" class="anchor" href="#gr_cache_query_port"><span class="octicon octicon-link"></span></a><code>gr_cache_query_port</code>
+</h5>
+
+<p>Default is 7002. Self explaining.</p>
+
+<h5>
+<a name="gr_timezone" class="anchor" href="#gr_timezone"><span class="octicon octicon-link"></span></a><code>gr_timezone</code>
+</h5>
+
+<p>Default is 'GMT' (string). Timezone for graphite to be used.</p>
+
+<h5>
+<a name="gr_storage_schemas" class="anchor" href="#gr_storage_schemas"><span class="octicon octicon-link"></span></a><code>gr_storage_schemas</code>
+</h5>
+
+<p>Default is</p>
+
+<pre><code>[
+  {
+    name       =&gt; 'carbon',
+    pattern    =&gt; '^carbon\.',
+    retentions =&gt; '1m:90d'
+  },
+  {
+    name       =&gt; 'default',
+    pattern    =&gt; '.*',
+    retentions =&gt; '1s:30m,1m:1d,5m:2y'
+  }
+]
+</code></pre>
+
+<p>The storage schemas, which describes how long matching graphs are to be stored in detail.</p>
+
+<h5>
+<a name="gr_storage_aggregation_rules" class="anchor" href="#gr_storage_aggregation_rules"><span class="octicon octicon-link"></span></a><code>gr_storage_aggregation_rules</code>
+</h5>
+
+<p>Default is the Hashmap:</p>
+
+<pre><code>{
+  '00_min'         =&gt; { pattern =&gt; '\.min$',   factor =&gt; '0.1', method =&gt; 'min' },
+  '01_max'         =&gt; { pattern =&gt; '\.max$',   factor =&gt; '0.1', method =&gt; 'max' },
+  '02_sum'         =&gt; { pattern =&gt; '\.count$', factor =&gt; '0.1', method =&gt; 'sum' },
+  '99_default_avg' =&gt; { pattern =&gt; '.*',       factor =&gt; '0.5', method =&gt; 'average'}
+}
+</code></pre>
+
+<p>The storage aggregation rules.</p>
+
+<h5>
+<a name="gr_web_server" class="anchor" href="#gr_web_server"><span class="octicon octicon-link"></span></a><code>gr_web_server</code>
+</h5>
+
+<p>Default is 'apache'. The web server to use. Valid values are 'apache', 'nginx', 'wsgionly' or 'none'. 'nginx' is only supported on Debian-like systems. And 'none' means that you will manage the webserver yourself.</p>
+
+<h5>
+<a name="gr_web_servername" class="anchor" href="#gr_web_servername"><span class="octicon octicon-link"></span></a><code>gr_web_servername</code>
+</h5>
+
+<p>Default is <code>$::fqdn</code> (string). Virtualhostname of Graphite webgui.</p>
+
+<h5>
+<a name="gr_web_cors_allow_from_all" class="anchor" href="#gr_web_cors_allow_from_all"><span class="octicon octicon-link"></span></a><code>gr_web_cors_allow_from_all</code>
+</h5>
+
+<p>Default is false (boolean). Include CORS Headers for all hosts (*) in web server config.</p>
+
+<h5>
+<a name="gr_apache_port" class="anchor" href="#gr_apache_port"><span class="octicon octicon-link"></span></a><code>gr_apache_port</code>
+</h5>
+
+<p>Default is 80. The HTTP port apache will use.</p>
+
+<h5>
+<a name="gr_apache_port_https" class="anchor" href="#gr_apache_port_https"><span class="octicon octicon-link"></span></a><code>gr_apache_port_https</code>
+</h5>
+
+<p>Default is 443. The HTTPS port apache will use.</p>
+
+<h5>
+<a name="gr_apache_24" class="anchor" href="#gr_apache_24"><span class="octicon octicon-link"></span></a><code>gr_apache_24</code>
+</h5>
+
+<p>Default is false (boolean). If you set this to 'true' and use 'apache' in <code>gr_web_server</code>, then the configuration for Apache 2.4 is used, else it will be Apache 2.2 compatible configuration.</p>
+
+<h5>
+<a name="gr_django_1_4_or_less" class="anchor" href="#gr_django_1_4_or_less"><span class="octicon octicon-link"></span></a><code>gr_django_1_4_or_less</code>
+</h5>
+
+<p>Default is false (boolean). Django settings style.</p>
+
+<h5>
+<a name="gr_django_db_engine" class="anchor" href="#gr_django_db_engine"><span class="octicon octicon-link"></span></a><code>gr_django_db_engine</code>
+</h5>
+
+<p>Default is 'django.db.backends.sqlite3' (string). Can be set to</p>
+
+<ul>
+<li>django.db.backends.postgresql  &lt;- Removed in Django 1.4</li>
+<li>django.db.backends.postgresql_psycopg2</li>
+<li>django.db.backends.mysql</li>
+<li>django.db.backends.sqlite3</li>
+<li>django.db.backends.oracle</li>
+</ul><h5>
+<a name="gr_django_db_name" class="anchor" href="#gr_django_db_name"><span class="octicon octicon-link"></span></a><code>gr_django_db_name</code>
+</h5>
+
+<p>Default is '/opt/graphite/storage/graphite.db' (string). Name of database to be used by django.</p>
+
+<h5>
+<a name="gr_django_db_user" class="anchor" href="#gr_django_db_user"><span class="octicon octicon-link"></span></a><code>gr_django_db_user</code>
+</h5>
+
+<p>Default is '' (string). Name of database user.</p>
+
+<h5>
+<a name="gr_django_db_password" class="anchor" href="#gr_django_db_password"><span class="octicon octicon-link"></span></a><code>gr_django_db_password</code>
+</h5>
+
+<p>Default is '' (string). Password of database user.</p>
+
+<h5>
+<a name="gr_django_db_host" class="anchor" href="#gr_django_db_host"><span class="octicon octicon-link"></span></a><code>gr_django_db_host</code>
+</h5>
+
+<p>Default is '' (string). Hostname/IP of database server.</p>
+
+<h5>
+<a name="gr_django_db_port" class="anchor" href="#gr_django_db_port"><span class="octicon octicon-link"></span></a><code>gr_django_db_port</code>
+</h5>
+
+<p>Default is '' (string). Port of database.</p>
+
+<h5>
+<a name="gr_enable_carbon_aggregator" class="anchor" href="#gr_enable_carbon_aggregator"><span class="octicon octicon-link"></span></a><code>gr_enable_carbon_aggregator</code>
+</h5>
+
+<p>Default is false (boolean) Enable the carbon aggregator daemon.</p>
+
+<h5>
+<a name="gr_aggregator_line_interface" class="anchor" href="#gr_aggregator_line_interface"><span class="octicon octicon-link"></span></a><code>gr_aggregator_line_interface</code>
+</h5>
+
+<p>Default is '0.0.0.0' (string). Address for line interface to listen on.</p>
+
+<h5>
+<a name="gr_aggregator_line_port" class="anchor" href="#gr_aggregator_line_port"><span class="octicon octicon-link"></span></a><code>gr_aggregator_line_port</code>
+</h5>
+
+<p>Default is 2023. TCP port for line interface to listen on.</p>
+
+<h5>
+<a name="gr_aggregator_pickle_interface" class="anchor" href="#gr_aggregator_pickle_interface"><span class="octicon octicon-link"></span></a><code>gr_aggregator_pickle_interface</code>
+</h5>
+
+<p>Default is '0.0.0.0' (string). IP address for pickle interface.</p>
+
+<h5>
+<a name="gr_aggregator_pickle_port" class="anchor" href="#gr_aggregator_pickle_port"><span class="octicon octicon-link"></span></a><code>gr_aggregator_pickle_port</code>
+</h5>
+
+<p>Default is 2024. Pickle port.</p>
+
+<h5>
+<a name="gr_aggregator_forward_all" class="anchor" href="#gr_aggregator_forward_all"><span class="octicon octicon-link"></span></a><code>gr_aggregator_forward_all</code>
+</h5>
+
+<p>Default is 'True' (string). Forward all metrics to the destination(s) defined in  <code>gr_aggregator_destinations</code>.</p>
+
+<h5>
+<a name="gr_aggregator_destinations" class="anchor" href="#gr_aggregator_destinations"><span class="octicon octicon-link"></span></a><code>gr_aggregator_destinations</code>
+</h5>
+
+<p>Default is <a href="array"> '127.0.0.1:2004' </a>. Array of backend carbons.</p>
+
+<h5>
+<a name="gr_aggregator_max_queue_size" class="anchor" href="#gr_aggregator_max_queue_size"><span class="octicon octicon-link"></span></a><code>gr_aggregator_max_queue_size</code>
+</h5>
+
+<p>Default is 10000. Maximum queue size.</p>
+
+<h5>
+<a name="gr_aggregator_use_flow_control" class="anchor" href="#gr_aggregator_use_flow_control"><span class="octicon octicon-link"></span></a><code>gr_aggregator_use_flow_control</code>
+</h5>
+
+<p>Default is 'True' (string). Enable flow control Can be True or False.</p>
+
+<h5>
+<a name="gr_aggregator_max_intervals" class="anchor" href="#gr_aggregator_max_intervals"><span class="octicon octicon-link"></span></a><code>gr_aggregator_max_intervals</code>
+</h5>
+
+<p>Default is 5. Maximum number intervals to keep around.</p>
+
+<h5>
+<a name="gr_aggregator_rules" class="anchor" href="#gr_aggregator_rules"><span class="octicon octicon-link"></span></a><code>gr_aggregator_rules</code>
+</h5>
+
+<p>Default is</p>
+
+<pre><code>{
+  'carbon-class-mem'  =&gt; 'carbon.all.&lt;class&gt;.memUsage (60) = sum carbon.&lt;class&gt;.*.memUsage',
+  'carbon-all-mem'    =&gt; 'carbon.all.memUsage (60) = sum carbon.*.*.memUsage',
+}
+</code></pre>
+
+<p>Hashmap of carbon aggregation rules.</p>
+
+<h5>
+<a name="gr_memcache_hosts" class="anchor" href="#gr_memcache_hosts"><span class="octicon octicon-link"></span></a><code>gr_memcache_hosts</code>
+</h5>
+
+<p>Default is undef (array). List of memcache hosts to use. eg ['127.0.0.1:11211','10.10.10.1:11211']</p>
+
+<h5>
+<a name="secret_key" class="anchor" href="#secret_key"><span class="octicon octicon-link"></span></a><code>secret_key</code>
+</h5>
+
+<p>Default is 'UNSAFE_DEFAULT' (string). CHANGE IT! Secret used as salt for things like hashes, cookies, sessions etc. Has to be the same on all nodes of a graphite cluster.</p>
+
+<h5>
+<a name="nginx_htpasswd" class="anchor" href="#nginx_htpasswd"><span class="octicon octicon-link"></span></a><code>nginx_htpasswd</code>
+</h5>
+
+<p>Default is undef (string). The user and salted SHA-1 (SSHA) password for Nginx authentication. If set, Nginx will be configured to use HTTP Basic authentication with the given user &amp; password. e.g.: 'testuser:$jsfak3.c3Fd0i1k2kel/3sdf3'</p>
+
+<h5>
+<a name="manage_ca_certificate" class="anchor" href="#manage_ca_certificate"><span class="octicon octicon-link"></span></a><code>manage_ca_certificate</code>
+</h5>
+
+<p>Default is true (boolean). Used to determine if the module should install ca-certificate on Debian machines during the initial installation.</p>
+
+<h5>
+<a name="gr_use_ldap" class="anchor" href="#gr_use_ldap"><span class="octicon octicon-link"></span></a><code>gr_use_ldap</code>
+</h5>
+
+<p>Default is false (boolean). Turn ldap authentication on/off.</p>
+
+<h5>
+<a name="gr_ldap_uri" class="anchor" href="#gr_ldap_uri"><span class="octicon octicon-link"></span></a><code>gr_ldap_uri</code>
+</h5>
+
+<p>Default is '' (string). Set ldap uri.</p>
+
+<h5>
+<a name="gr_ldap_search_base" class="anchor" href="#gr_ldap_search_base"><span class="octicon octicon-link"></span></a><code>gr_ldap_search_base</code>
+</h5>
+
+<p>Default is '' (string). Set the ldap search base.</p>
+
+<h5>
+<a name="gr_ldap_base_user" class="anchor" href="#gr_ldap_base_user"><span class="octicon octicon-link"></span></a><code>gr_ldap_base_user</code>
+</h5>
+
+<p>Default is '' (string).Set ldap base user.</p>
+
+<h5>
+<a name="gr_ldap_base_pass" class="anchor" href="#gr_ldap_base_pass"><span class="octicon octicon-link"></span></a><code>gr_ldap_base_pass</code>
+</h5>
+
+<p>Default is '' (string). Set ldap password.</p>
+
+<h5>
+<a name="gr_ldap_user_query" class="anchor" href="#gr_ldap_user_query"><span class="octicon octicon-link"></span></a><code>gr_ldap_user_query</code>
+</h5>
+
+<p>Default is '(username=%s)' (string). Set ldap user query.</p>
+
+<h5>
+<a name="gr_use_remote_user_auth" class="anchor" href="#gr_use_remote_user_auth"><span class="octicon octicon-link"></span></a><code>gr_use_remote_user_auth</code>
+</h5>
+
+<p>Default is 'False' (string). Allow use of REMOTE_USER env variable within Django/Graphite.</p>
+
+<h5>
+<a name="gr_remote_user_header_name" class="anchor" href="#gr_remote_user_header_name"><span class="octicon octicon-link"></span></a><code>gr_remote_user_header_name</code>
+</h5>
+
+<p>Default is undef. Allows the use of a custom HTTP header, instead of the REMOTE_USER env variable (mainly for nginx use) to tell Graphite a user is authenticated. Useful when using an external auth handler with X-Accel-Redirect etc.
+Example value - HTTP_X_REMOTE_USER
+The specific use case for this is OpenID right now, but could be expanded to anything.
+One example is something like <a href="http://antoineroygobeil.com/blog/2014/2/6/nginx-ruby-auth/">http://antoineroygobeil.com/blog/2014/2/6/nginx-ruby-auth/</a>
+combined with the option <code>gr_web_server</code> = 'wsgionly' and <a href="http://forge.puppetlabs.com/jfryman/nginx">http://forge.puppetlabs.com/jfryman/nginx</a>
+with some custom vhosts.
+The sample external auth app is available from <a href="https://github.com/antoinerg/nginx_auth_backend">here</a></p>
+
+<h2>
+<a name="requirements" class="anchor" href="#requirements"><span class="octicon octicon-link"></span></a>Requirements</h2>
+
+<h3>
+<a name="modules-needed" class="anchor" href="#modules-needed"><span class="octicon octicon-link"></span></a>Modules needed:</h3>
+
+<p>stdlib by puppetlabs</p>
+
+<h3>
+<a name="software-versions-needed" class="anchor" href="#software-versions-needed"><span class="octicon octicon-link"></span></a>Software versions needed:</h3>
+
+<p>facter &gt; 1.6.2
+puppet &gt; 2.6.2</p>
+
+<p>On Redhat distributions you need the EPEL or RPMforge repository, because Graphite needs packages, which are not part of the default repos.</p>
+
+<h2>
+<a name="limitations" class="anchor" href="#limitations"><span class="octicon octicon-link"></span></a>Limitations</h2>
+
+<p>This module is tested on CentOS 6.5 and Debian 7 (Wheezy) and should also run without problems on</p>
+
+<ul>
+<li>RHEL/CentOS/Scientific 6+</li>
+<li>Debian 6+</li>
+<li>Ubunutu 10.04 and newer</li>
+</ul><p>Most settings of Graphite can be set by parameters. So their can be special configurations for you. In this case you should edit
+the file <code>templates/opt/graphite/webapp/graphite/local_settings.py.erb</code>.</p>
+
+<p>The nginx configs are only supported on Debian based systems at the moment.</p>
+
+<h2>
+<a name="contributing" class="anchor" href="#contributing"><span class="octicon octicon-link"></span></a>Contributing</h2>
+
+<p>Echocat modules are open projects. So if you want to make this module even better, you can contribute to this module on <a href="https://github.com/echocat/puppet-graphite">Github</a>.</p>
+      </section>
+      <footer>
+        <p>This project is maintained by <a href="https://github.com/echocat">echocat</a></p>
+        <p><small>Hosted on GitHub Pages &mdash; Theme by <a href="https://github.com/orderedlist">orderedlist</a></small></p>
+      </footer>
+    </div>
+    <script src="javascripts/scale.fix.js"></script>
+    
+  </body>
+</html>
